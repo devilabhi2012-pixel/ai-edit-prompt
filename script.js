@@ -39,34 +39,6 @@ const grid = document.getElementById("grid");
 const search = document.getElementById("search");
 const empty = document.getElementById("empty");
 
-function renderCats() {
-  catBox.innerHTML = cats
-    .map(c => `<button class="cat ${c === selected ? "active" : ""}" onclick="setCat('${c}')">${c}</button>`)
-    .join("");
-}
-
-function render() {
-  const q = search.value.toLowerCase().trim();
-
-  const list = prompts.filter(p =>
-    (selected === "All" || p.category === selected) &&
-    (!q || (p.title + " " + p.category + " " + p.prompt).toLowerCase().includes(q))
-  );
-
-  grid.innerHTML = list.map((p, i) => `
-    <article class="card">
-      <div class="meta">${p.category}</div>
-      <h2>${p.title}</h2>
-      <div class="prompt">${escapeHtml(p.prompt)}</div>
-      <button class="copy" onclick="copyPrompt(${prompts.indexOf(p)}, this)">
-        Copy Prompt
-      </button>
-    </article>
-  `).join("");
-
-  empty.hidden = list.length > 0;
-}
-
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, m => ({
     "&": "&amp;",
@@ -75,6 +47,40 @@ function escapeHtml(s) {
     '"': "&quot;",
     "'": "&#039;"
   }[m]));
+}
+
+function renderCats() {
+  catBox.innerHTML = cats.map(c =>
+    `<button class="cat ${c === selected ? "active" : ""}" onclick="setCat('${c}')">${c}</button>`
+  ).join("");
+}
+
+function render() {
+  const q = search.value.toLowerCase().trim();
+
+  const list = prompts.filter(p =>
+    (selected === "All" || p.category === selected) &&
+    (!q || (p.title + " " + p.category + " " + p.prompt)
+      .toLowerCase().includes(q))
+  );
+
+  grid.innerHTML = list.map(p => `
+    <article class="card">
+      <div class="meta">${p.category}</div>
+      <h2>${p.title}</h2>
+      <div class="prompt">${escapeHtml(p.prompt)}</div>
+
+      <button class="copy" onclick="copyPrompt(${prompts.indexOf(p)}, this)">
+        Copy Prompt
+      </button>
+
+      <button class="copy" onclick="sendToTelegram(${prompts.indexOf(p)}, this)">
+        Send to Telegram
+      </button>
+    </article>
+  `).join("");
+
+  empty.hidden = list.length > 0;
 }
 
 function setCat(c) {
@@ -93,8 +99,45 @@ async function copyPrompt(i, btn) {
     setTimeout(() => {
       btn.textContent = old;
     }, 1200);
-  } catch (e) {
-    alert("Copy failed. Please copy the text manually.");
+  } catch {
+    alert("Copy failed. Please copy manually.");
+  }
+}
+
+async function sendToTelegram(i, btn) {
+  const old = btn.textContent;
+  btn.textContent = "Sending...";
+
+  try {
+    const response = await fetch(
+      "https://ai-edit-prompt.vercel.app/api/telegram",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message:
+            `✨ AIEditPrompt\n\n${prompts[i].title}\n\n${prompts[i].prompt}`
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error("Telegram failed");
+    }
+
+    btn.textContent = "Sent ✓";
+
+    setTimeout(() => {
+      btn.textContent = old;
+    }, 1500);
+
+  } catch {
+    btn.textContent = old;
+    alert("Telegram connection failed.");
   }
 }
 
