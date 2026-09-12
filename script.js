@@ -125,9 +125,9 @@ async function sendToTelegram(i, btn) {
 
     const data = await response.json();
 
-    if (!response.ok || !data.ok) {
-      throw new Error("Telegram failed");
-    }
+if (!response.ok || !data.ok) {
+  throw new Error(data.error || "Telegram failed");
+}
 
     btn.textContent = "Sent ✓";
 
@@ -135,10 +135,10 @@ async function sendToTelegram(i, btn) {
       btn.textContent = old;
     }, 1500);
 
-  } catch {
-    btn.textContent = old;
-    alert("Telegram connection failed.");
-  }
+  } catch (error) {
+  btn.textContent = old;
+  alert(error.message || "Telegram connection failed.");
+}
 }
 
 search.addEventListener("input", render);
